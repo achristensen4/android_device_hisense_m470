@@ -31,7 +31,6 @@ on init
     mkdir /thirdparty 0666 system system
 
     mount debugfs debugfs /sys/kernel/debug
-    write /sys/class/firmware/timeout 5
 
 on fs
     setprop ro.crypto.fuse_sdcard true
@@ -50,7 +49,6 @@ on post-fs-data
     chown dhcp dhcp /data/misc/dhcp
 
 # Last kmsg backup.
-    mkdir /data/var
     copy /proc/last_kmsg /data/var/last_kmsg
     chown root log /data/var/last_kmsg
     chmod 0644 /data/var/last_kmsg
@@ -80,7 +78,7 @@ on boot
     chown bluetooth net_bt_stack ro.bt.bdaddr_path
     chown bluetooth net_bt_stack /system/etc/bluetooth
     chown bluetooth net_bt_stack /data/misc/bluetooth
-    # setprop ro.bt.bdaddr_path "/data/misc/bluetooth/bdaddr"
+    setprop ro.bt.bdaddr_path "/data/misc/bluetooth/bdaddr"
     setprop ro.bt.bdaddr_path "/sys/devices/platform/bck/bt_addr"
 
 # audio
@@ -258,10 +256,10 @@ insmod /system/lib/modules/inv_mpu_ak8975.ko
 # Power management settings
      write /sys/module/cpu_tegra3/parameters/no_lp 0
 
-     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor conservative
-     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor conservative
-     write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor conservative
-     write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor conservative
+     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor powersave
+     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor powersave
+     write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor powersave
+     write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor powersave
 
      write /sys/devices/system/cpu/cpufreq/conservative/up_threshold 95
      write /sys/devices/system/cpu/cpufreq/conservative/down_threshold 75
@@ -271,7 +269,7 @@ insmod /system/lib/modules/inv_mpu_ak8975.ko
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor interactive
     write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor interactive
     write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor interactive
-    write /sys/devices/system/cpu/cpufreq/interactive/boost_factor 2
+    write /sys/devices/system/cpu/cpufreq/interactive/boost_factor 0
     write /sys/devices/system/cpu/cpufreq/interactive/sustain_load 80
     write /sys/module/cpu_tegra3/parameters/auto_hotplug 1
     write /sys/module/cpuidle/parameters/lp2_in_idle 1
@@ -281,8 +279,8 @@ insmod /system/lib/modules/inv_mpu_ak8975.ko
 
 # Increase read ahead size of mmc block devices from default(128) to 1MB
 # Reduces power comsuption during video playback from sdcards
-    write /sys/block/mmcblk0/queue/read_ahead_kb 2048
-    write /sys/block/mmcblk1/queue/read_ahead_kb 2048
+    write /sys/block/mmcblk0/queue/read_ahead_kb 512
+    write /sys/block/mmcblk1/queue/read_ahead_kb 512
 
 # USB On The Go - Host Mode
     chown system system /sys/devices/platform/tegra-otg/enable_host
@@ -303,66 +301,58 @@ insmod /system/lib/modules/inv_mpu_ak8975.ko
     chown gps system /dev/ttyHS1
 
 
-service wpa_supplicant /system/bin/wpa_supplicant \
-    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
-    -I/system/etc/wifi/wpa_supplicant_overlay.conf \
-    -O/data/misc/wifi/sockets \
+service wpa_supplicant /system/bin/wpa_supplicant
+    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf
+    -I/system/etc/wifi/wpa_supplicant_overlay.conf
+    -O/data/misc/wifi/sockets
     -e/data/misc/wifi/entropy.bin -g@android:wpa_wlan0
     #   we will start as root and wpa_supplicant will switch to user wifi
     #   after setting up the capabilities required for WEXT
-    #   user wifi
-    #   group wifi inet keystore
+    user wifi
+    group wifi inet keystore
     class main
     socket wpa_wlan0 dgram 660 wifi wifi
-    disabled
     oneshot
 
-service p2p_supplicant /system/bin/wpa_supplicant \
-    -ip2p0 -Dnl80211 -c/data/misc/wifi/p2p_supplicant.conf \
-    -I/system/etc/wifi/p2p_supplicant_overlay.conf -N \
-    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
-    -I/system/etc/wifi/wpa_supplicant_overlay.conf \
-    -O/data/misc/wifi/sockets -puse_p2p_group_interface=1 \
+service p2p_supplicant /system/bin/wpa_supplicant
+    -ip2p0 -Dnl80211 -c/data/misc/wifi/p2p_supplicant.conf
+    -I/system/etc/wifi/p2p_supplicant_overlay.conf -N
+    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf
+    -I/system/etc/wifi/wpa_supplicant_overlay.conf
+    -O/data/misc/wifi/sockets -puse_p2p_group_interface=1
     -e/data/misc/wifi/entropy.bin -g@android:wpa_wlan0
 #   we will start as root and wpa_supplicant will switch to user wifi
 #   after setting up the capabilities required for WEXT
-#   user wifi
-#   group wifi inet keystore
+    user wifi
+    group wifi inet keystore
     class main
     socket wpa_wlan0 dgram 660 wifi wifi
-    disabled
     oneshot
 
 service dhcpcd_wlan0 /system/bin/dhcpcd -aABDKL
     class main
-    disabled
     oneshot
 
 service dhcpcd_p2p /system/bin/dhcpcd -aABKL
     class main
-    disabled
     oneshot
 
 service iprenew_wlan0 /system/bin/dhcpcd -n
     class main
-    disabled
     oneshot
 
 service iprenew_p2p /system/bin/dhcpcd -n
     class main
-    disabled
     oneshot
 
 service dhcpcd_bt-pan /system/bin/dhcpcd -BKLG
-    disabled
     oneshot
 
 service iprenew_bt-pan /system/bin/dhcpcd -n
-    disabled
     oneshot
 
 service wifimacwriter /system/bin/logwrapper /system/bin/wifimacwriter
-    class late_start
+    class main
     oneshot
 
 # btmacwriter - to create unique BD address
@@ -373,17 +363,16 @@ service btmacwriter /system/bin/btmacwriter
     oneshot
 
 #BCM
-service hciattach /system/bin/brcm_patchram_plus -d --enable_hci --tosleep 50000 --baudrate 3000000 --patchram /etc/firmware/bcm4330.hcd --enable_lpm /dev/ttyHS2
+service hciattach /system/bin/brcm_patchram_plus -d --enable_hci --baudrate 3000000 --patchram /etc/firmware/bcm4330.hcd --enable_lpm /dev/ttyHS2
     class main
     user bluetooth
     group bluetooth net_bt_stack
-    disabled
     oneshot
 
 # GPS daemon
 service gps-daemon /system/bin/glgps -c /system/etc/gps/gpsconfig.xml
     user gps
-    class late_start
+    class main
     socket gps seqpacket 0660 gps system
     socket rilgps.socket seqpacket 0660 gps system
     group system
@@ -393,9 +382,9 @@ service gps-daemon /system/bin/glgps -c /system/etc/gps/gpsconfig.xml
 import init.tf.rc
 
 # create filesystems if necessary
-service setup_fs /system/bin/setup_fs \
-        /dev/block/platform/sdhci-tegra.3/by-name/UDA \
-        /dev/block/platform/sdhci-tegra.3/by-name/CAC \
+service setup_fs /system/bin/setup_fs
+        /dev/block/platform/sdhci-tegra.3/by-name/UDA
+        /dev/block/platform/sdhci-tegra.3/by-name/CAC
         /dev/block/platform/sdhci-tegra.3/by-name/MDM
     class core
     user root
@@ -404,16 +393,14 @@ service setup_fs /system/bin/setup_fs \
 
 # Create emulated storage
 service sdcard /system/bin/sdcard -u 1023 -g 1023 -l /data/media /mnt/shell/emulated
-    class late_start
+    class main
 
 # FUSE sdcard daemon for rich permissions (runs as media_rw)
 service fuse_sdcard1 /system/bin/sdcard -u 1023 -g 1023 -d /mnt/media_rw/sdcard1 /storage/sdcard1
-    class late_start
-    disabled
+    class main
 
 service fuse_usbdisk /system/bin/sdcard -u 1023 -g 1023 -w 1023 -d /mnt/media_rw/usbdisk /storage/usbdisk
-    class late_start
-    disabled
+    class main
 
 # Enable NvCpuD, and set it to never poll config again
 on boot
